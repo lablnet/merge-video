@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# 1. Check for ffmpeg and install if missing
+if ! command -v ffmpeg &> /dev/null; then
+    echo "Umer, ffmpeg is not installed. Trying to install it now... 🛠️"
+    
+    # Check for Homebrew
+    if ! command -v brew &> /dev/null; then
+        echo "Homebrew not found. Installing Homebrew first... 🍺"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    
+    brew install ffmpeg
+else
+    echo "ffmpeg is already installed! Ready to go, Umer. ✅"
+fi
+
+# 2. Create a list of files sorted by time
+# We use 'ls -tr' to sort by time (oldest first)
+echo "Finding and sorting your MP4 files... 📄"
+rm -f filelist.txt
+for f in $(ls -tr *.mp4); do
+    # Skip the output file if it already exists
+    if [ "$f" != "merged_output.mp4" ]; then
+        echo "file '$f'" >> filelist.txt
+    fi
+done
+
+# 3. Merge the files using ffmpeg
+if [ -f filelist.txt ]; then
+    echo "Merging files into merged_output.mp4... 🎥"
+    ffmpeg -f concat -safe 0 -i filelist.txt -c copy merged_output.mp4
+    echo "Done! Your video is ready, Umer! 🥳"
+    rm filelist.txt
+else
+    echo "No MP4 files found in this folder! ❌"
+fi
