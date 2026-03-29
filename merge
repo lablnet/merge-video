@@ -15,16 +15,49 @@ else
     echo "ffmpeg is already installed! Ready to go, Umer. ✅"
 fi
 
-# 2. Create a list of files sorted by time
-# We use 'ls -tr' to sort by time (oldest first)
-echo "Finding and sorting your MP4 files... 📄"
-rm -f filelist.txt
-for f in $(ls -tr *.mp4); do
-    # Skip the output file if it already exists
-    if [ "$f" != "merged_output.mp4" ]; then
-        echo "file '$f'" >> filelist.txt
+# Parse optional --last argument
+LAST_FIRST=false
+for arg in "$@"; do
+    if [ "$arg" == "--last" ]; then
+        LAST_FIRST=true
     fi
 done
+
+# 2. Create a list of files sorted by time
+echo "Finding and sorting your MP4 files... 📄"
+
+# Get all mp4 files sorted by time (oldest first), excluding the output file
+# Using a loop instead of mapfile for compatibility with macOS's default bash 3.2
+files=()
+while IFS=  read -r line; do
+    [[ -n "$line" ]] && files+=("$line")
+done < <(ls -tr *.mp4 2>/dev/null | grep -v "merged_output.mp4")
+
+if [ ${#files[@]} -eq 0 ]; then
+    echo "No MP4 files found in this folder! ❌"
+    exit 1
+fi
+
+rm -f filelist.txt
+
+if [ "$LAST_FIRST" = true ]; then
+    echo "Flag --last detected! Putting the newest video first. 🕒"
+    # Get the last (newest) file
+    last_idx=$((${#files[@]} - 1))
+    last_file="${files[$last_idx]}"
+    echo "file '$last_file'" >> filelist.txt
+    
+    # Add the rest of the files in order (excluding the last one)
+    for (( i=0; i<$last_idx; i++ )); do
+        echo "file '${files[$i]}'" >> filelist.txt
+    done
+else
+    # Regular order: oldest to newest
+    for f in "${files[@]}"; do
+        echo "file '$f'" >> filelist.txt
+    done
+fi
+
 
 # 3. Merge the files using ffmpeg
 if [ -f filelist.txt ]; then
@@ -33,5 +66,6 @@ if [ -f filelist.txt ]; then
     echo "Done! Your video is ready, Umer! 🥳"
     rm filelist.txt
 else
-    echo "No MP4 files found in this folder! ❌"
+    echo "Something went wrong creating the file list. ❌"
 fi
+
